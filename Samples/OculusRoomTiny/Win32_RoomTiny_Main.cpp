@@ -111,6 +111,8 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
     // Create the room model
     Scene roomScene(false); // Can simplify scene further with parameter if required.
 
+	OpenRenderFile();
+
     // MAIN LOOP
     // =========
     while (!(DX11.Key['Q'] && DX11.Key[VK_CONTROL]) && !DX11.Key[VK_ESCAPE])
@@ -204,6 +206,8 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
         APP_RENDER_DistortAndPresent();
     #endif
     }
+
+	CloseRenderFile();
 
     // Release and close down
     ovrHmd_Destroy(HMD);

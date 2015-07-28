@@ -123,14 +123,34 @@ void APP_RENDER_SetupGeometryAndShaders(void)
     // A model for the latency test colour in the corner
     pLatencyTestScene = new Scene();
 
-    ExampleFeatures3(VertexDesc, 6, vShader, pShader);
-    }
+    ExampleFeatures3(VertexDesc, 6, vShader, pShader);    
+}
+
+HANDLE hFile;
+
+void OpenRenderFile()
+{
+	hFile = CreateFile(L"C:\\Renders\\Lazarus",                // name of the write
+					GENERIC_WRITE,          // open for writing
+					0,                      // do not share
+					NULL,                   // default security
+					CREATE_NEW,             // create new file only
+					FILE_ATTRIBUTE_NORMAL,  // normal file
+					NULL);                  // no attr. template
+}
+
+void CloseRenderFile()
+{
+	CloseHandle(hFile);
+}
 
 //----------------------------------------------------------------------------------
 BYTE* APP_RENDER_DistortAndPresent()
 {
     bool waitForGPU = true;
     
+	/* Create a texture and a render target which directs the render output into this texture */
+
 	// Create the texture to receive the distortion map - it should be high precision
 
 	ID3D11Texture2D* renderTargetTextureMap;
@@ -149,7 +169,7 @@ BYTE* APP_RENDER_DistortAndPresent()
 	textureDesc.Height = DX11.WinSize.h;
 	textureDesc.MipLevels = 1;
 	textureDesc.ArraySize = 1;
-	textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; //DXGI_FORMAT_R32G32B32A32_FLOAT for saving the distortion map
 	textureDesc.SampleDesc.Count = 1;
 	textureDesc.Usage = D3D11_USAGE_DEFAULT;
 	textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
@@ -166,7 +186,9 @@ BYTE* APP_RENDER_DistortAndPresent()
 	// Create the render target view.
 	DX11.Device->CreateRenderTargetView(renderTargetTextureMap, &renderTargetViewDesc, &renderTargetViewMap);
 
+	/**/
 
+	/*That is sufficient to render to, but a render target texture cannot be mapped to the CPU. Create a second texture that can. The first texture shall be copied into this.*/
 
 	// create a staging texture that can be read by the cpu
 
@@ -182,10 +204,12 @@ BYTE* APP_RENDER_DistortAndPresent()
 
 	DX11.Device->CreateTexture2D(&stagingTextureDesc, NULL, &renderTargetTextureMapStaging);
 
+	/**/
 
+	/* Render the image - specifying our texture render target as the destination */
 
     // Clear screen
-    DX11.ClearAndSetRenderTarget(renderTargetViewMap,
+	DX11.ClearAndSetRenderTarget(renderTargetViewMap,
                                  DX11.MainDepthBuffer, Recti(0,0,DX11.WinSize.w,DX11.WinSize.h));
 
     // Render latency-tester square
@@ -239,7 +263,8 @@ BYTE* APP_RENDER_DistortAndPresent()
 
 	// Read the texture into memory
 
-	if(false){
+	bool render = false;
+	if(render){
 
 		DX11.Context->CopyResource(renderTargetTextureMapStaging, renderTargetTextureMap);
 
@@ -251,26 +276,20 @@ BYTE* APP_RENDER_DistortAndPresent()
 		BYTE* pYourBytes = (BYTE*)mappedResource.pData;
 		unsigned int uiPitch = mappedResource.RowPitch;
 
-
-		HANDLE hFile = CreateFile(L"DistortionMap",                // name of the write
-						   GENERIC_WRITE,          // open for writing
-						   0,                      // do not share
-						   NULL,                   // default security
-						   CREATE_NEW,             // create new file only
-						   FILE_ATTRIBUTE_NORMAL,  // normal file
-						   NULL);                  // no attr. template
-
 		DWORD bytesWritten;
 		WriteFile(hFile, pYourBytes, mappedResource.DepthPitch, &bytesWritten, NULL);
-
-		CloseHandle(hFile);
 
 		DX11.Context->Unmap(renderTargetTextureMapStaging, 0);
 	}
 
+	/* So we can see what we are capturing, copy the rendered image into the back buffer and show it on the screen */
+
+	//beware this will fail silently if the render target texture and the back buffer are not the same format!
 	DX11.Context->CopyResource(DX11.BackBuffer, renderTargetTextureMap);
 
     DX11.SwapChain->Present(true, 0); // Vsync enabled
+
+	/**/
 
     // Only flush GPU for ExtendDesktop; not needed in Direct App Rendering with Oculus driver.
     if (HMD->HmdCaps & ovrHmdCap_ExtendDesktop)

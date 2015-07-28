@@ -270,7 +270,7 @@ OVR_EXPORT ovrBool ovr_Initialize()
         CAPI_SystemInitCalled = 1;
     }
 
-    if (!OVR::System::DirectDisplayEnabled() && !OVR::Display::InCompatibilityMode(false))
+    if (!OVR::System::DirectDisplayEnabled() && !OVR::Display::InCompatibilityMode(true))
     {
         OVR_ASSERT(false);
         return 0;
