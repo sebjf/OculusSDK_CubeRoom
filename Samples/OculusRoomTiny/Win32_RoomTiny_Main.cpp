@@ -73,8 +73,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
     ovrHmd_SetEnabledCaps(HMD, ovrHmdCap_LowPersistence | ovrHmdCap_DynamicPrediction);
 
     // Start the sensor which informs of the Rift's pose and motion
- //   ovrHmd_ConfigureTracking(HMD, ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection |
- //                                 ovrTrackingCap_Position, 0);
+   // ovrHmd_ConfigureTracking(HMD, ovrTrackingCap_Orientation, 0);
 
     // Make the eye render buffers (caution if actual size < requested due to HW limits). 
     for (int eye=0; eye<2; eye++)
@@ -138,11 +137,13 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
         if (DX11.Key[VK_RIGHT]) Yaw -= 0.02f;
 
         // Keyboard inputs to adjust player position
-        if (DX11.Key['W']||DX11.Key[VK_UP])   Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(0,0,-speed*0.05f));
+        if (DX11.Key['W']||DX11.Key[VK_UP])   
+			Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(0,0,-speed*0.05f));
         if (DX11.Key['S']||DX11.Key[VK_DOWN]) Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(0,0,+speed*0.05f));
         if (DX11.Key['D'])                    Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(+speed*0.05f,0,0));
         if (DX11.Key['A'])                    Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(-speed*0.05f,0,0));
-        Pos.y = ovrHmd_GetFloat(HMD, OVR_KEY_EYE_HEIGHT, Pos.y);
+       
+		Pos.y = ovrHmd_GetFloat(HMD, OVR_KEY_EYE_HEIGHT, Pos.y);
   
         // Animate the cube
         if (speed)
@@ -151,6 +152,13 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 		// Get both eye poses simultaneously, with IPD offset already included. 
 		ovrPosef temp_EyeRenderPose[2];
 		ovrHmd_GetEyePoses(HMD, 0, useHmdToEyeViewOffset, temp_EyeRenderPose, NULL);
+
+		ovrPosef hmdPose;
+		hmdPose.Orientation = Quatf(Vector3f(0,0,1),0);
+		hmdPose.Position = Pos;
+
+		temp_EyeRenderPose[0] = Posef(hmdPose.Orientation, ((Posef)hmdPose).Apply(-((Vector3f)useHmdToEyeViewOffset[0])));
+		temp_EyeRenderPose[1] = Posef(hmdPose.Orientation, ((Posef)hmdPose).Apply(-((Vector3f)useHmdToEyeViewOffset[1])));
 
         // Render the two undistorted eye views into their render buffers.  
         for (int eye = 0; eye < 2; eye++)

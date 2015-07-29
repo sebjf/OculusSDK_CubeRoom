@@ -536,8 +536,13 @@ bool DirectX11::InitWindowAndDevice(HINSTANCE hinst, Recti vp, bool windowed)
         return(false);
     if (FAILED(DXGIFactory->EnumAdapters(0, &Adapter)))
         return(false);
-    if (FAILED(D3D11CreateDevice(Adapter, Adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE,
-                            NULL, 0, NULL, 0, D3D11_SDK_VERSION, &Device, NULL, &Context)))
+    if (FAILED(D3D11CreateDevice(	Adapter, 
+									Adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE,
+									NULL, 
+									0,//D3D11_CREATE_DEVICE_DEBUG, 
+									NULL, 
+									0, 
+									D3D11_SDK_VERSION, &Device, NULL, &Context)))
         return(false);
     
     DXGI_SWAP_CHAIN_DESC scDesc;
@@ -558,7 +563,9 @@ bool DirectX11::InitWindowAndDevice(HINSTANCE hinst, Recti vp, bool windowed)
  
     if (FAILED(DXGIFactory->CreateSwapChain(Device, &scDesc, &SwapChain)))               return(false);    
     if (FAILED(SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&BackBuffer))) return(false) ;
-    if (FAILED(Device->CreateRenderTargetView(BackBuffer, NULL, &BackBufferRT)))         return(false) ;
+	HRESULT r = Device->CreateRenderTargetView(BackBuffer, NULL, &BackBufferRT);
+    if (FAILED(r))         return(false) ;
+
  
     MainDepthBuffer = new ImageBuffer(true,true, Sizei(WinSize.w, WinSize.h));
     Context->OMSetRenderTargets(1, &BackBufferRT, MainDepthBuffer->TexDsv);

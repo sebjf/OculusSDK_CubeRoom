@@ -92,7 +92,8 @@ void APP_RENDER_SetupGeometryAndShaders(void)
         "{                                                                                      \n"
              // 3 samples for fixing chromatic aberrations
         "    float R = Texture.Sample(Linear, oTexCoord0.xy).r;                                 \n"
-        "    float G = Texture.Sample(Linear, oTexCoord1.xy).g;                                 \n"
+			 //only use the red channel's distortion (oTexCoord0) to match what the camera should see on the display (i.e. no chromatic aberration)
+        "    float G = Texture.Sample(Linear, oTexCoord1.xy).g;                                 \n" 
         "    float B = Texture.Sample(Linear, oTexCoord2.xy).b;                                 \n"
         "    return (oVignette*float4(R,G,B,1));                                                \n"
         "}";
@@ -245,7 +246,7 @@ BYTE* APP_RENDER_DistortAndPresent()
 
         ovrMatrix4f    timeWarpMatrices[2];
         Quatf extraYawSinceRender = Quatf(Vector3f(0, 1, 0), 0);
-        ovrHmd_GetEyeTimewarpMatricesDebug(HMD, (ovrEyeType)eye, *useEyePose, timeWarpMatrices, debugTimeAdjuster);
+        ovrHmd_GetEyeTimewarpMatricesDebug(HMD, (ovrEyeType)eye, *useEyePose, timeWarpMatrices, 0);
 
         // Due to be absorbed by a future SDK update
         UtilFoldExtraYawIntoTimewarpMatrix((Matrix4f *)&timeWarpMatrices[0], Quatf(Vector3f(0, 1, 0), 0), extraYawSinceRender);
