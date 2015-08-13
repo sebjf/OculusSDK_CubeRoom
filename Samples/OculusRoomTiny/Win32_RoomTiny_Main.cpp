@@ -39,7 +39,7 @@ ImageBuffer    * pEyeDepthBuffer[2];   // For the eye buffers to use when render
 ovrPosef         EyeRenderPose[2];     // Useful to remember where the rendered eye originated
 float            YawAtRender[2];       // Useful to remember where the rendered eye originated
 float            Yaw(3.141592f);       // Horizontal rotation of the player
-Vector3f         Pos(0.0f,1.6f,-5.0f); // Position of player
+Vector3f         Pos(0.0f,1.6f,5.0f); // Position of player
 
 #include "Win32_RoomTiny_ExampleFeatures.h" // Include extra options to show some simple operations
 
@@ -144,10 +144,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
         if (DX11.Key['A'])                    Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(-speed*0.05f,0,0));
        
 		Pos.y = ovrHmd_GetFloat(HMD, OVR_KEY_EYE_HEIGHT, Pos.y);
-  
-        // Animate the cube
-        if (speed)
-            roomScene.Models[0]->Pos = Vector3f(9*sin(0.01f*clock),3,9*cos(0.01f*clock));
+
 
 		// Get both eye poses simultaneously, with IPD offset already included. 
 		ovrPosef temp_EyeRenderPose[2];

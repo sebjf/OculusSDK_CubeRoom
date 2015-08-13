@@ -19,7 +19,10 @@ limitations under the License.
  
 #include "Kernel/OVR_Math.h"
 #include <d3d11.h>
+#include <D3DX11.h>
 #include <d3dcompiler.h>
+#include <cstring>
+#include <comdef.h>
 using namespace OVR;
 
 //---------------------------------------------------------------------
@@ -152,6 +155,22 @@ struct ImageBuffer
     ID3D11RenderTargetView *     TexRtv;
     ID3D11DepthStencilView *     TexDsv;
     Sizei                        Size;
+
+	ImageBuffer::ImageBuffer(LPCWSTR image_filename)
+	{
+		HRESULT res = D3DX11CreateTextureFromFile(DX11.Device, image_filename, NULL, NULL, (ID3D11Resource**)&Tex, NULL);
+		if(res != S_OK){
+			_com_error error(res);
+			printf("Error loading texture - %s\n", error.ErrorMessage());
+		}
+
+		res = DX11.Device->CreateShaderResourceView(Tex, NULL, &TexSv);
+		if(res != S_OK)
+		{
+			_com_error error(res);
+			printf("Error creating resource view - %s\n", error.ErrorMessage());
+		}
+	}
 
     ImageBuffer::ImageBuffer(bool rendertarget, bool depth, Sizei size, int mipLevels = 1,
                              unsigned char * data = NULL) : Size(size)
@@ -293,6 +312,45 @@ struct Model
         IndexBuffer  = new DataBuffer(D3D11_BIND_INDEX_BUFFER, &Indices[0], numIndices * 2);
     }
 
+	void Model::AddPlane(float scale)
+	{
+		Vertex v1;
+		v1.Pos = Vector3f(-1,1,0) * scale;
+		v1.U = 0;
+		v1.V = 0;
+		v1.C = Color(255,255,255,255);
+
+		Vertex v2;
+		v2.Pos = Vector3f(1,1,0) * scale;
+		v2.U = 1;
+		v2.V = 0;
+		v2.C = Color(255,255,255,255);
+
+		Vertex v3;
+		v3.Pos = Vector3f(1,-1,0) * scale;
+		v3.U = 1;
+		v3.V = 1;
+		v3.C = Color(255,255,255,255);
+		
+		Vertex v4;
+		v4.Pos = Vector3f(-1,-1,0) * scale;
+		v4.U = 0;
+		v4.V = 1;
+		v4.C = Color(255,255,255,255);
+
+		AddVertex(v1);
+		AddVertex(v2);
+		AddVertex(v3);
+		AddVertex(v4);
+
+		AddIndex(0);
+		AddIndex(1);
+		AddIndex(2);
+		AddIndex(2);
+		AddIndex(3);
+		AddIndex(0);
+	}
+
     void Model::AddSolidColorBox(float x1, float y1, float z1, float x2, float y2, float z2, Color c)
     {
         Vector3f Vert[][2] =
@@ -340,7 +398,9 @@ struct Scene
     Model * Models[10];
 
     void    Add(Model * n)
-    { Models[num_models++] = n; }    
+    { Models[num_models++] = n; }
+
+
 
     Scene(int reducedVersion) : num_models(0) // Main world
     {
@@ -360,74 +420,86 @@ struct Scene
             "float4 main(in float4 Position : SV_Position, in float4 Color: COLOR0, in float2 TexCoord : TEXCOORD0) : SV_Target"
             "{   return Color * Texture.Sample(Linear, TexCoord); }";
  
-        // Construct textures
-        static Model::Color tex_pixels[4][256*256];
-        ShaderFill * generated_texture[4];
+		//create the planes
+		ShaderFill* negx = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negx.jpg")));
+		//Model* m = new Model(Vector3f(0,0,0), 
 
-        for (int k=0;k<4;k++)
-        {
-            for (int j = 0; j < 256; j++)
-            for (int i = 0; i < 256; i++)
-            {
-                if (k==0) tex_pixels[0][j*256+i] = (((i >> 7) ^ (j >> 7)) & 1) ? Model::Color(180,180,180,255) : Model::Color(80,80,80,255);// floor
-                if (k==1) tex_pixels[1][j*256+i] = (((j/4 & 15) == 0) || (((i/4 & 15) == 0) && ((((i/4 & 31) == 0) ^ ((j/4 >> 4) & 1)) == 0))) ?
-                                                   Model::Color(60,60,60,255) : Model::Color(180,180,180,255); //wall
-                if (k==2) tex_pixels[2][j*256+i] = (i/4 == 0 || j/4 == 0) ? Model::Color(80,80,80,255) : Model::Color(180,180,180,255);// ceiling
-                if (k==3) tex_pixels[3][j*256+i] = Model::Color(128,128,128,255);// blank
-            }
-            ImageBuffer * t      = new ImageBuffer(false,false,Sizei(256,256),8,(unsigned char *)tex_pixels[k]);
-            generated_texture[k] = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,t);
-        }
-        // Construct geometry
-        Model * m = new Model(Vector3f(0,0,0),generated_texture[2]);  // Moving box
-        m->AddSolidColorBox( 0, 0, 0,  +1.0f,  +1.0f, 1.0f,  Model::Color(64,64,64)); 
-        m->AllocateBuffers(); Add(m);
+		
+		ShaderFill* params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posy.jpg")));
+		Model* m = new Model(Vector3f(0,0,0), params);
+		m->AddPlane(10);
+		//m->Rot = Quatf(Vector3f(0,0,1),90);	
+		m->AllocateBuffers();
+		Add(m);
 
-        m = new Model(Vector3f(0,0,0),generated_texture[1]);  // Walls
-        m->AddSolidColorBox( -10.1f,   0.0f,  -20.0f, -10.0f,  4.0f,  20.0f, Model::Color(128,128,128)); // Left Wall
-        m->AddSolidColorBox( -10.0f,  -0.1f,  -20.1f,  10.0f,  4.0f, -20.0f, Model::Color(128,128,128)); // Back Wall
-        m->AddSolidColorBox(  10.0f,  -0.1f,  -20.0f,  10.1f,  4.0f,  20.0f, Model::Color(128,128,128));  // Right Wall
-        m->AllocateBuffers(); Add(m);
+        //// Construct textures
+        //static Model::Color tex_pixels[4][256*256];
+        //ShaderFill * generated_texture[4];
+
+        //for (int k=0;k<4;k++)
+        //{
+        //    for (int j = 0; j < 256; j++)
+        //    for (int i = 0; i < 256; i++)
+        //    {
+        //        if (k==0) tex_pixels[0][j*256+i] = (((i >> 7) ^ (j >> 7)) & 1) ? Model::Color(180,180,180,255) : Model::Color(80,80,80,255);// floor
+        //        if (k==1) tex_pixels[1][j*256+i] = (((j/4 & 15) == 0) || (((i/4 & 15) == 0) && ((((i/4 & 31) == 0) ^ ((j/4 >> 4) & 1)) == 0))) ?
+        //                                           Model::Color(60,60,60,255) : Model::Color(180,180,180,255); //wall
+        //        if (k==2) tex_pixels[2][j*256+i] = (i/4 == 0 || j/4 == 0) ? Model::Color(80,80,80,255) : Model::Color(180,180,180,255);// ceiling
+        //        if (k==3) tex_pixels[3][j*256+i] = Model::Color(128,128,128,255);// blank
+        //    }
+        //    ImageBuffer * t      = new ImageBuffer(false,false,Sizei(256,256),8,(unsigned char *)tex_pixels[k]);
+        //    generated_texture[k] = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,t);
+        //}
+        //// Construct geometry
+        //m = new Model(Vector3f(0,0,0),generated_texture[2]);  // Moving box
+        //m->AddSolidColorBox( 0, 0, 0,  +1.0f,  +1.0f, 1.0f,  Model::Color(64,64,64)); 
+        //m->AllocateBuffers(); Add(m);
+
+        //m = new Model(Vector3f(0,0,0),generated_texture[1]);  // Walls
+        //m->AddSolidColorBox( -10.1f,   0.0f,  -20.0f, -10.0f,  4.0f,  20.0f, Model::Color(128,128,128)); // Left Wall
+        //m->AddSolidColorBox( -10.0f,  -0.1f,  -20.1f,  10.0f,  4.0f, -20.0f, Model::Color(128,128,128)); // Back Wall
+        //m->AddSolidColorBox(  10.0f,  -0.1f,  -20.0f,  10.1f,  4.0f,  20.0f, Model::Color(128,128,128));  // Right Wall
+        //m->AllocateBuffers(); Add(m);
  
-        m = new Model(Vector3f(0,0,0),generated_texture[0]);  // Floors
-        m->AddSolidColorBox( -10.0f,  -0.1f,  -20.0f,  10.0f,  0.0f, 20.1f,  Model::Color(128,128,128)); // Main floor
-        m->AddSolidColorBox( -15.0f,  -6.1f,   18.0f,  15.0f, -6.0f, 30.0f,  Model::Color(128,128,128) );// Bottom floor
-        m->AllocateBuffers(); Add(m);
+        //m = new Model(Vector3f(0,0,0),generated_texture[0]);  // Floors
+        //m->AddSolidColorBox( -10.0f,  -0.1f,  -20.0f,  10.0f,  0.0f, 20.1f,  Model::Color(128,128,128)); // Main floor
+        //m->AddSolidColorBox( -15.0f,  -6.1f,   18.0f,  15.0f, -6.0f, 30.0f,  Model::Color(128,128,128) );// Bottom floor
+        //m->AllocateBuffers(); Add(m);
 
-        if (reducedVersion) return;
+        //if (reducedVersion) return;
 
-        m = new Model(Vector3f(0,0,0),generated_texture[2]);  // Ceiling
-        m->AddSolidColorBox( -10.0f,  4.0f,  -20.0f,  10.0f,  4.1f, 20.1f,  Model::Color(128,128,128)); 
-        m->AllocateBuffers(); Add(m);
+        //m = new Model(Vector3f(0,0,0),generated_texture[2]);  // Ceiling
+        //m->AddSolidColorBox( -10.0f,  4.0f,  -20.0f,  10.0f,  4.1f, 20.1f,  Model::Color(128,128,128)); 
+        //m->AllocateBuffers(); Add(m);
  
-        m = new Model(Vector3f(0,0,0),generated_texture[3]);  // Fixtures & furniture
-        m->AddSolidColorBox(   9.5f,   0.75f,  3.0f,  10.1f,  2.5f,   3.1f,  Model::Color(96,96,96) );   // Right side shelf// Verticals
-        m->AddSolidColorBox(   9.5f,   0.95f,  3.7f,  10.1f,  2.75f,  3.8f,  Model::Color(96,96,96) );   // Right side shelf
-        m->AddSolidColorBox(   9.55f,  1.20f,  2.5f,  10.1f,  1.30f,  3.75f,  Model::Color(96,96,96) ); // Right side shelf// Horizontals
-        m->AddSolidColorBox(   9.55f,  2.00f,  3.05f,  10.1f,  2.10f,  4.2f,  Model::Color(96,96,96) ); // Right side shelf
-        m->AddSolidColorBox(   5.0f,   1.1f,   20.0f,  10.0f,  1.2f,  20.1f, Model::Color(96,96,96) );   // Right railing   
-        m->AddSolidColorBox(  -10.0f,  1.1f, 20.0f,   -5.0f,   1.2f, 20.1f, Model::Color(96,96,96) );   // Left railing  
-        for (float f=5.0f;f<=9.0f;f+=1.0f)
-        {
-            m->AddSolidColorBox(   f,   0.0f,   20.0f,   f+0.1f,  1.1f,  20.1f, Model::Color(128,128,128) );// Left Bars
-            m->AddSolidColorBox(  -f,   1.1f,   20.0f,  -f-0.1f,  0.0f,  20.1f, Model::Color(128,128,128) );// Right Bars
-        }
-        m->AddSolidColorBox( -1.8f, 0.8f, 1.0f,   0.0f,  0.7f,  0.0f,   Model::Color(128,128,0)); // Table
-        m->AddSolidColorBox( -1.8f, 0.0f, 0.0f,  -1.7f,  0.7f,  0.1f,   Model::Color(128,128,0)); // Table Leg 
-        m->AddSolidColorBox( -1.8f, 0.7f, 1.0f,  -1.7f,  0.0f,  0.9f,   Model::Color(128,128,0)); // Table Leg 
-        m->AddSolidColorBox(  0.0f, 0.0f, 1.0f,  -0.1f,  0.7f,  0.9f,   Model::Color(128,128,0)); // Table Leg 
-        m->AddSolidColorBox(  0.0f, 0.7f, 0.0f,  -0.1f,  0.0f,  0.1f,   Model::Color(128,128,0)); // Table Leg 
-        m->AddSolidColorBox( -1.4f, 0.5f, -1.1f, -0.8f,  0.55f, -0.5f,  Model::Color(44,44,128) ); // Chair Set
-        m->AddSolidColorBox( -1.4f, 0.0f, -1.1f, -1.34f, 1.0f,  -1.04f, Model::Color(44,44,128) ); // Chair Leg 1
-        m->AddSolidColorBox( -1.4f, 0.5f, -0.5f, -1.34f, 0.0f,  -0.56f, Model::Color(44,44,128) ); // Chair Leg 2
-        m->AddSolidColorBox( -0.8f, 0.0f, -0.5f, -0.86f, 0.5f,  -0.56f, Model::Color(44,44,128) ); // Chair Leg 2
-        m->AddSolidColorBox( -0.8f, 1.0f, -1.1f, -0.86f, 0.0f,  -1.04f, Model::Color(44,44,128) ); // Chair Leg 2
-        m->AddSolidColorBox( -1.4f, 0.97f,-1.05f,-0.8f,  0.92f, -1.10f, Model::Color(44,44,128) ); // Chair Back high bar
+        //m = new Model(Vector3f(0,0,0),generated_texture[3]);  // Fixtures & furniture
+        //m->AddSolidColorBox(   9.5f,   0.75f,  3.0f,  10.1f,  2.5f,   3.1f,  Model::Color(96,96,96) );   // Right side shelf// Verticals
+        //m->AddSolidColorBox(   9.5f,   0.95f,  3.7f,  10.1f,  2.75f,  3.8f,  Model::Color(96,96,96) );   // Right side shelf
+        //m->AddSolidColorBox(   9.55f,  1.20f,  2.5f,  10.1f,  1.30f,  3.75f,  Model::Color(96,96,96) ); // Right side shelf// Horizontals
+        //m->AddSolidColorBox(   9.55f,  2.00f,  3.05f,  10.1f,  2.10f,  4.2f,  Model::Color(96,96,96) ); // Right side shelf
+        //m->AddSolidColorBox(   5.0f,   1.1f,   20.0f,  10.0f,  1.2f,  20.1f, Model::Color(96,96,96) );   // Right railing   
+        //m->AddSolidColorBox(  -10.0f,  1.1f, 20.0f,   -5.0f,   1.2f, 20.1f, Model::Color(96,96,96) );   // Left railing  
+        //for (float f=5.0f;f<=9.0f;f+=1.0f)
+        //{
+        //    m->AddSolidColorBox(   f,   0.0f,   20.0f,   f+0.1f,  1.1f,  20.1f, Model::Color(128,128,128) );// Left Bars
+        //    m->AddSolidColorBox(  -f,   1.1f,   20.0f,  -f-0.1f,  0.0f,  20.1f, Model::Color(128,128,128) );// Right Bars
+        //}
+        //m->AddSolidColorBox( -1.8f, 0.8f, 1.0f,   0.0f,  0.7f,  0.0f,   Model::Color(128,128,0)); // Table
+        //m->AddSolidColorBox( -1.8f, 0.0f, 0.0f,  -1.7f,  0.7f,  0.1f,   Model::Color(128,128,0)); // Table Leg 
+        //m->AddSolidColorBox( -1.8f, 0.7f, 1.0f,  -1.7f,  0.0f,  0.9f,   Model::Color(128,128,0)); // Table Leg 
+        //m->AddSolidColorBox(  0.0f, 0.0f, 1.0f,  -0.1f,  0.7f,  0.9f,   Model::Color(128,128,0)); // Table Leg 
+        //m->AddSolidColorBox(  0.0f, 0.7f, 0.0f,  -0.1f,  0.0f,  0.1f,   Model::Color(128,128,0)); // Table Leg 
+        //m->AddSolidColorBox( -1.4f, 0.5f, -1.1f, -0.8f,  0.55f, -0.5f,  Model::Color(44,44,128) ); // Chair Set
+        //m->AddSolidColorBox( -1.4f, 0.0f, -1.1f, -1.34f, 1.0f,  -1.04f, Model::Color(44,44,128) ); // Chair Leg 1
+        //m->AddSolidColorBox( -1.4f, 0.5f, -0.5f, -1.34f, 0.0f,  -0.56f, Model::Color(44,44,128) ); // Chair Leg 2
+        //m->AddSolidColorBox( -0.8f, 0.0f, -0.5f, -0.86f, 0.5f,  -0.56f, Model::Color(44,44,128) ); // Chair Leg 2
+        //m->AddSolidColorBox( -0.8f, 1.0f, -1.1f, -0.86f, 0.0f,  -1.04f, Model::Color(44,44,128) ); // Chair Leg 2
+        //m->AddSolidColorBox( -1.4f, 0.97f,-1.05f,-0.8f,  0.92f, -1.10f, Model::Color(44,44,128) ); // Chair Back high bar
 
-        for (float f=3.0f;f<=6.6f;f+=0.4f)
-            m->AddSolidColorBox( -3,  0.0f, f,   -2.9f, 1.3f, f+0.1f, Model::Color(64,64,64) );//Posts
-        
-        m->AllocateBuffers(); Add(m);
+        //for (float f=3.0f;f<=6.6f;f+=0.4f)
+        //    m->AddSolidColorBox( -3,  0.0f, f,   -2.9f, 1.3f, f+0.1f, Model::Color(64,64,64) );//Posts
+        //
+        //m->AllocateBuffers(); Add(m);
      }
 
     // Simple latency box (keep similar vertex format and shader params same, for ease of code)
