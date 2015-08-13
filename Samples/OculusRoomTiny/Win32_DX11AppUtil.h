@@ -421,85 +421,51 @@ struct Scene
             "{   return Color * Texture.Sample(Linear, TexCoord); }";
  
 		//create the planes
-		ShaderFill* negx = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negx.jpg")));
-		//Model* m = new Model(Vector3f(0,0,0), 
 
+		float scale = 10;
+		float scale2 = 10;
 		
-		ShaderFill* params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posy.jpg")));
-		Model* m = new Model(Vector3f(0,0,0), params);
-		m->AddPlane(10);
-		//m->Rot = Quatf(Vector3f(0,0,1),90);	
+		ShaderFill* params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posx.jpg")));
+		Model* m = new Model(Vector3f(1,0,0) * scale, params);
+		m->AddPlane(scale2);
+		m->Rot = Quatf(Vector3f(0,1,0),DegreeToRad(90.0f));	
 		m->AllocateBuffers();
 		Add(m);
 
-        //// Construct textures
-        //static Model::Color tex_pixels[4][256*256];
-        //ShaderFill * generated_texture[4];
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negx.jpg")));
+		m = new Model(Vector3f(-1,0,0) * scale, params);
+		m->AddPlane(scale2);
+		m->Rot = Quatf(Vector3f(0,1,0),DegreeToRad(-90.0f));	
+		m->AllocateBuffers();
+		Add(m);
 
-        //for (int k=0;k<4;k++)
-        //{
-        //    for (int j = 0; j < 256; j++)
-        //    for (int i = 0; i < 256; i++)
-        //    {
-        //        if (k==0) tex_pixels[0][j*256+i] = (((i >> 7) ^ (j >> 7)) & 1) ? Model::Color(180,180,180,255) : Model::Color(80,80,80,255);// floor
-        //        if (k==1) tex_pixels[1][j*256+i] = (((j/4 & 15) == 0) || (((i/4 & 15) == 0) && ((((i/4 & 31) == 0) ^ ((j/4 >> 4) & 1)) == 0))) ?
-        //                                           Model::Color(60,60,60,255) : Model::Color(180,180,180,255); //wall
-        //        if (k==2) tex_pixels[2][j*256+i] = (i/4 == 0 || j/4 == 0) ? Model::Color(80,80,80,255) : Model::Color(180,180,180,255);// ceiling
-        //        if (k==3) tex_pixels[3][j*256+i] = Model::Color(128,128,128,255);// blank
-        //    }
-        //    ImageBuffer * t      = new ImageBuffer(false,false,Sizei(256,256),8,(unsigned char *)tex_pixels[k]);
-        //    generated_texture[k] = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,t);
-        //}
-        //// Construct geometry
-        //m = new Model(Vector3f(0,0,0),generated_texture[2]);  // Moving box
-        //m->AddSolidColorBox( 0, 0, 0,  +1.0f,  +1.0f, 1.0f,  Model::Color(64,64,64)); 
-        //m->AllocateBuffers(); Add(m);
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posy.jpg")));
+		m = new Model(Vector3f(0,1,0) * scale, params);
+		m->AddPlane(scale2);
+		m->Rot = Quatf(Vector3f(1,0,0),DegreeToRad(-90.0f));	
+		m->AllocateBuffers();
+		Add(m);
 
-        //m = new Model(Vector3f(0,0,0),generated_texture[1]);  // Walls
-        //m->AddSolidColorBox( -10.1f,   0.0f,  -20.0f, -10.0f,  4.0f,  20.0f, Model::Color(128,128,128)); // Left Wall
-        //m->AddSolidColorBox( -10.0f,  -0.1f,  -20.1f,  10.0f,  4.0f, -20.0f, Model::Color(128,128,128)); // Back Wall
-        //m->AddSolidColorBox(  10.0f,  -0.1f,  -20.0f,  10.1f,  4.0f,  20.0f, Model::Color(128,128,128));  // Right Wall
-        //m->AllocateBuffers(); Add(m);
- 
-        //m = new Model(Vector3f(0,0,0),generated_texture[0]);  // Floors
-        //m->AddSolidColorBox( -10.0f,  -0.1f,  -20.0f,  10.0f,  0.0f, 20.1f,  Model::Color(128,128,128)); // Main floor
-        //m->AddSolidColorBox( -15.0f,  -6.1f,   18.0f,  15.0f, -6.0f, 30.0f,  Model::Color(128,128,128) );// Bottom floor
-        //m->AllocateBuffers(); Add(m);
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negy.jpg")));
+		m = new Model(Vector3f(0,-1,0) * scale, params);
+		m->AddPlane(scale2);
+		m->Rot = Quatf(Vector3f(1,0,0),DegreeToRad(90.0f));	
+		m->AllocateBuffers();
+		Add(m);
 
-        //if (reducedVersion) return;
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posz.jpg")));
+		m = new Model(Vector3f(0,0,1) * scale, params);
+		m->AddPlane(scale2);
+		//m->Rot = Quatf(Vector3f(0,1,0),DegreeToRad(0.0f));	
+		m->AllocateBuffers();
+		Add(m);
 
-        //m = new Model(Vector3f(0,0,0),generated_texture[2]);  // Ceiling
-        //m->AddSolidColorBox( -10.0f,  4.0f,  -20.0f,  10.0f,  4.1f, 20.1f,  Model::Color(128,128,128)); 
-        //m->AllocateBuffers(); Add(m);
- 
-        //m = new Model(Vector3f(0,0,0),generated_texture[3]);  // Fixtures & furniture
-        //m->AddSolidColorBox(   9.5f,   0.75f,  3.0f,  10.1f,  2.5f,   3.1f,  Model::Color(96,96,96) );   // Right side shelf// Verticals
-        //m->AddSolidColorBox(   9.5f,   0.95f,  3.7f,  10.1f,  2.75f,  3.8f,  Model::Color(96,96,96) );   // Right side shelf
-        //m->AddSolidColorBox(   9.55f,  1.20f,  2.5f,  10.1f,  1.30f,  3.75f,  Model::Color(96,96,96) ); // Right side shelf// Horizontals
-        //m->AddSolidColorBox(   9.55f,  2.00f,  3.05f,  10.1f,  2.10f,  4.2f,  Model::Color(96,96,96) ); // Right side shelf
-        //m->AddSolidColorBox(   5.0f,   1.1f,   20.0f,  10.0f,  1.2f,  20.1f, Model::Color(96,96,96) );   // Right railing   
-        //m->AddSolidColorBox(  -10.0f,  1.1f, 20.0f,   -5.0f,   1.2f, 20.1f, Model::Color(96,96,96) );   // Left railing  
-        //for (float f=5.0f;f<=9.0f;f+=1.0f)
-        //{
-        //    m->AddSolidColorBox(   f,   0.0f,   20.0f,   f+0.1f,  1.1f,  20.1f, Model::Color(128,128,128) );// Left Bars
-        //    m->AddSolidColorBox(  -f,   1.1f,   20.0f,  -f-0.1f,  0.0f,  20.1f, Model::Color(128,128,128) );// Right Bars
-        //}
-        //m->AddSolidColorBox( -1.8f, 0.8f, 1.0f,   0.0f,  0.7f,  0.0f,   Model::Color(128,128,0)); // Table
-        //m->AddSolidColorBox( -1.8f, 0.0f, 0.0f,  -1.7f,  0.7f,  0.1f,   Model::Color(128,128,0)); // Table Leg 
-        //m->AddSolidColorBox( -1.8f, 0.7f, 1.0f,  -1.7f,  0.0f,  0.9f,   Model::Color(128,128,0)); // Table Leg 
-        //m->AddSolidColorBox(  0.0f, 0.0f, 1.0f,  -0.1f,  0.7f,  0.9f,   Model::Color(128,128,0)); // Table Leg 
-        //m->AddSolidColorBox(  0.0f, 0.7f, 0.0f,  -0.1f,  0.0f,  0.1f,   Model::Color(128,128,0)); // Table Leg 
-        //m->AddSolidColorBox( -1.4f, 0.5f, -1.1f, -0.8f,  0.55f, -0.5f,  Model::Color(44,44,128) ); // Chair Set
-        //m->AddSolidColorBox( -1.4f, 0.0f, -1.1f, -1.34f, 1.0f,  -1.04f, Model::Color(44,44,128) ); // Chair Leg 1
-        //m->AddSolidColorBox( -1.4f, 0.5f, -0.5f, -1.34f, 0.0f,  -0.56f, Model::Color(44,44,128) ); // Chair Leg 2
-        //m->AddSolidColorBox( -0.8f, 0.0f, -0.5f, -0.86f, 0.5f,  -0.56f, Model::Color(44,44,128) ); // Chair Leg 2
-        //m->AddSolidColorBox( -0.8f, 1.0f, -1.1f, -0.86f, 0.0f,  -1.04f, Model::Color(44,44,128) ); // Chair Leg 2
-        //m->AddSolidColorBox( -1.4f, 0.97f,-1.05f,-0.8f,  0.92f, -1.10f, Model::Color(44,44,128) ); // Chair Back high bar
-
-        //for (float f=3.0f;f<=6.6f;f+=0.4f)
-        //    m->AddSolidColorBox( -3,  0.0f, f,   -2.9f, 1.3f, f+0.1f, Model::Color(64,64,64) );//Posts
-        //
-        //m->AllocateBuffers(); Add(m);
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negz.jpg")));
+		m = new Model(Vector3f(0,0,-1) * scale, params);
+		m->AddPlane(scale2);
+		m->Rot = Quatf(Vector3f(0,1,0),DegreeToRad(180.0f));	
+		m->AllocateBuffers();
+		Add(m);
      }
 
     // Simple latency box (keep similar vertex format and shader params same, for ease of code)
@@ -647,7 +613,7 @@ bool DirectX11::InitWindowAndDevice(HINSTANCE hinst, Recti vp, bool windowed)
     D3D11_RASTERIZER_DESC rs;
     memset(&rs, 0, sizeof(rs));
     rs.AntialiasedLineEnable = rs.DepthClipEnable = true;
-    rs.CullMode              = D3D11_CULL_BACK;    
+    rs.CullMode              = D3D11_CULL_NONE;    
      rs.FillMode             = D3D11_FILL_SOLID;
     ID3D11RasterizerState *  Rasterizer = NULL;
     Device->CreateRasterizerState(&rs, &Rasterizer);

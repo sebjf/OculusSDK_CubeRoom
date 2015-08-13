@@ -154,38 +154,44 @@ BYTE* APP_RENDER_DistortAndPresent()
 
 	// Create the texture to receive the distortion map - it should be high precision
 
-	ID3D11Texture2D* renderTargetTextureMap;
-	ID3D11RenderTargetView* renderTargetViewMap;	
+	static ID3D11Texture2D* renderTargetTextureMap;
+	static ID3D11RenderTargetView* renderTargetViewMap;	
 
-	D3D11_TEXTURE2D_DESC textureDesc;
-	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
+	static D3D11_TEXTURE2D_DESC textureDesc;
+	static D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
 
-	// Initialize the  texture description.
-	ZeroMemory(&textureDesc, sizeof(textureDesc));
+	static bool renderTargetInitialised = false;
 
-	// Setup the texture description.
-	// We will have our map be a square
-	// We will need to have this texture bound as a render target AND a shader resource
-	textureDesc.Width = DX11.WinSize.w;
-	textureDesc.Height = DX11.WinSize.h;
-	textureDesc.MipLevels = 1;
-	textureDesc.ArraySize = 1;
-	textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; //DXGI_FORMAT_R32G32B32A32_FLOAT for saving the distortion map
-	textureDesc.SampleDesc.Count = 1;
-	textureDesc.Usage = D3D11_USAGE_DEFAULT;
-	textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
-	textureDesc.CPUAccessFlags = 0;
-	textureDesc.MiscFlags = 0;
+	if(!renderTargetInitialised){
+		// Initialize the  texture description.
+		ZeroMemory(&textureDesc, sizeof(textureDesc));
 
-	renderTargetViewDesc.Format = textureDesc.Format;
-	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-	renderTargetViewDesc.Texture2D.MipSlice = 0;
+		// Setup the texture description.
+		// We will have our map be a square
+		// We will need to have this texture bound as a render target AND a shader resource
+		textureDesc.Width = DX11.WinSize.w;
+		textureDesc.Height = DX11.WinSize.h;
+		textureDesc.MipLevels = 1;
+		textureDesc.ArraySize = 1;
+		textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; //DXGI_FORMAT_R32G32B32A32_FLOAT for saving the distortion map
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.Usage = D3D11_USAGE_DEFAULT;
+		textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
+		textureDesc.CPUAccessFlags = 0;
+		textureDesc.MiscFlags = 0;
 
-	// Create the texture
-	DX11.Device->CreateTexture2D(&textureDesc, NULL, &renderTargetTextureMap);
+		renderTargetViewDesc.Format = textureDesc.Format;
+		renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		renderTargetViewDesc.Texture2D.MipSlice = 0;
 
-	// Create the render target view.
-	DX11.Device->CreateRenderTargetView(renderTargetTextureMap, &renderTargetViewDesc, &renderTargetViewMap);
+		// Create the texture
+		DX11.Device->CreateTexture2D(&textureDesc, NULL, &renderTargetTextureMap);
+
+		// Create the render target view.
+		DX11.Device->CreateRenderTargetView(renderTargetTextureMap, &renderTargetViewDesc, &renderTargetViewMap);
+
+		renderTargetInitialised = true;
+	}
 
 	/**/
 
@@ -193,17 +199,21 @@ BYTE* APP_RENDER_DistortAndPresent()
 
 	// create a staging texture that can be read by the cpu
 
-	ID3D11Texture2D* renderTargetTextureMapStaging;
-	D3D11_TEXTURE2D_DESC stagingTextureDesc;
+	static ID3D11Texture2D* renderTargetTextureMapStaging;
+	static D3D11_TEXTURE2D_DESC stagingTextureDesc;
 
-	ZeroMemory(&stagingTextureDesc, sizeof(stagingTextureDesc));
+	if(!renderTargetInitialised){
+		ZeroMemory(&stagingTextureDesc, sizeof(stagingTextureDesc));
 
-	stagingTextureDesc = textureDesc;
-	stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
-	stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-	stagingTextureDesc.BindFlags = 0;
+		stagingTextureDesc = textureDesc;
+		stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
+		stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		stagingTextureDesc.BindFlags = 0;
 
-	DX11.Device->CreateTexture2D(&stagingTextureDesc, NULL, &renderTargetTextureMapStaging);
+		DX11.Device->CreateTexture2D(&stagingTextureDesc, NULL, &renderTargetTextureMapStaging);
+
+		renderTargetInitialised = true;
+	}
 
 	/**/
 

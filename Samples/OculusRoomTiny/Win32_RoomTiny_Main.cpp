@@ -38,8 +38,9 @@ ImageBuffer    * pEyeRenderTexture[2]; // Where the eye buffers will be rendered
 ImageBuffer    * pEyeDepthBuffer[2];   // For the eye buffers to use when rendered
 ovrPosef         EyeRenderPose[2];     // Useful to remember where the rendered eye originated
 float            YawAtRender[2];       // Useful to remember where the rendered eye originated
-float            Yaw(3.141592f);       // Horizontal rotation of the player
-Vector3f         Pos(0.0f,1.6f,5.0f); // Position of player
+float            Yaw(0.0f);       // Horizontal rotation of the player
+float			 Pitch(0.0f);
+Vector3f         Pos(0.0f,0.0f,0.0f); // Position of player
 
 #include "Win32_RoomTiny_ExampleFeatures.h" // Include extra options to show some simple operations
 
@@ -133,17 +134,18 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
         ExampleFeatures1(&speed, &timesToRenderScene, useHmdToEyeViewOffset);
 
         // Keyboard inputs to adjust player orientation
-        if (DX11.Key[VK_LEFT])  Yaw += 0.02f;
-        if (DX11.Key[VK_RIGHT]) Yaw -= 0.02f;
+        if (DX11.Key['E'])  Yaw += 0.02f;
+        if (DX11.Key['Q']) Yaw -= 0.02f;
+		if (DX11.Key['R'])  Pitch += 0.02f;
+        if (DX11.Key['F']) Pitch -= 0.02f;
 
         // Keyboard inputs to adjust player position
-        if (DX11.Key['W']||DX11.Key[VK_UP])   
-			Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(0,0,-speed*0.05f));
+        if (DX11.Key['W']||DX11.Key[VK_UP])   Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(0,0,-speed*0.05f));
         if (DX11.Key['S']||DX11.Key[VK_DOWN]) Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(0,0,+speed*0.05f));
         if (DX11.Key['D'])                    Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(+speed*0.05f,0,0));
         if (DX11.Key['A'])                    Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(-speed*0.05f,0,0));
        
-		Pos.y = ovrHmd_GetFloat(HMD, OVR_KEY_EYE_HEIGHT, Pos.y);
+		//Pos.y = ovrHmd_GetFloat(HMD, OVR_KEY_EYE_HEIGHT, Pos.y);
 
 
 		// Get both eye poses simultaneously, with IPD offset already included. 
@@ -179,14 +181,14 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
                 *useYaw     = Yaw;
 
                 // Get view and projection matrices (note near Z to reduce eye strain)
-                Matrix4f rollPitchYaw       = Matrix4f::RotationY(0);
-                Matrix4f finalRollPitchYaw  = Matrix4f(useEyePose->Orientation);
-                Vector3f finalUp            = (Vector3f(0, 1, 0));
-                Vector3f finalForward       = (Vector3f(0, 0, -1));
+				Matrix4f rollPitchYaw       = Matrix4f::RotationY(Yaw) * Matrix4f::RotationX(Pitch);
+				Matrix4f finalRollPitchYaw  = rollPitchYaw * Matrix4f(EyeRenderPose[eye].Orientation);
+				Vector3f finalUp            = finalRollPitchYaw.Transform(Vector3f(0, 1, 0));
+				Vector3f finalForward       = finalRollPitchYaw.Transform(Vector3f(0, 0, -1));
                 Vector3f shiftedEyePos      = (useEyePose->Position);
 
                 Matrix4f view = Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + finalForward, finalUp);
-                Matrix4f proj = ovrMatrix4f_Projection(EyeRenderDesc[eye].Fov, 0.2f, 1000.0f, true); 
+                Matrix4f proj = ovrMatrix4f_Projection(EyeRenderDesc[eye].Fov, 0.001f, 1000.0f, true); 
 
                 // Render the scene
                 for (int t=0; t<timesToRenderScene; t++)
