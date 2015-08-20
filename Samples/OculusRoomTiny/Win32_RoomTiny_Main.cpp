@@ -51,9 +51,89 @@ Vector3f         Pos(0.0f,0.0f,0.0f); // Position of player
 #include "Win32_RoomTiny_AppRender.h"       // Include non-SDK-rendered specific code
 #endif
 
+
+//http://www.codeproject.com/Articles/3061/Creating-a-Serial-communication-on-Win
+class ArduinoLED
+{
+public:
+	ArduinoLED()
+	{
+		m_comPort = CreateFile(L"COM5", GENERIC_READ|GENERIC_WRITE,0, NULL, OPEN_EXISTING, 0, NULL);
+
+		DCB commState;
+		GetCommState(m_comPort, &commState);
+
+		commState.BaudRate = 9600;
+		commState.Parity = 0;
+		commState.StopBits = 0;
+
+		SetCommState(m_comPort, &commState);
+
+		WaitAck();
+
+	}
+
+	~ArduinoLED()
+	{
+		CloseHandle(m_comPort);
+	}
+
+	void On()
+	{
+		WriteByte('a');
+	}
+
+	void Off()
+	{
+		WriteByte('b');
+	}
+
+
+private:
+	HANDLE m_comPort;
+
+	void WriteByte(char byte)
+	{
+		DWORD length;
+		WriteFile(m_comPort, &byte, 1, &length, NULL);
+		FlushFileBuffers(m_comPort);
+
+		if(WaitAck() != byte)
+		{
+			printf("Error on serial");
+		}
+	}
+
+	int WaitAck()
+	{
+		char read;
+		DWORD length;
+		while(!ReadFile(m_comPort,&read,1,&length,NULL))
+		{
+		}
+		return read;
+	}
+
+
+};
+
 //-------------------------------------------------------------------------------------
 int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 {
+	// initialise the arduino to signal when we begin clocking out the tracker data
+
+	ArduinoLED led;
+
+	led.On();
+	led.Off();
+	led.On();
+
+	while(1)
+	{
+	}
+
+	return 0;
+
     // Initializes LibOVR, and the Rift
     ovr_Initialize();
     HMD = ovrHmd_Create(0);
