@@ -70,7 +70,6 @@ public:
 		SetCommState(m_comPort, &commState);
 
 		WaitAck();
-
 	}
 
 	~ArduinoLED()
@@ -122,17 +121,8 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 {
 	// initialise the arduino to signal when we begin clocking out the tracker data
 
-	ArduinoLED led;
+//	ArduinoLED led;
 
-	led.On();
-	led.Off();
-	led.On();
-
-	while(1)
-	{
-	}
-
-	return 0;
 
     // Initializes LibOVR, and the Rift
     ovr_Initialize();
@@ -146,15 +136,16 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 	// For this, just create a window for debugging and do not connect the display
 
     //bool windowed = (HMD->HmdCaps & ovrHmdCap_ExtendDesktop) ? false : true;    
-	if (!DX11.InitWindowAndDevice(hinst, Recti(OVR::Vector2<int>(0,0), HMD->Resolution), true))
+	bool windowed = true;
+	if (!DX11.InitWindowAndDevice(hinst, Recti(OVR::Vector2<int>(0,0), HMD->Resolution), windowed))
         return(0);
 
     DX11.SetMaxFrameLatency(1);
-    //ovrHmd_AttachToWindow(HMD, DX11.Window, NULL, NULL);
-    ovrHmd_SetEnabledCaps(HMD, ovrHmdCap_LowPersistence | ovrHmdCap_DynamicPrediction);
+    ovrHmd_AttachToWindow(HMD, DX11.Window, NULL, NULL);
+    ovrHmd_SetEnabledCaps(HMD, ovrHmdCap_LowPersistence);
 
     // Start the sensor which informs of the Rift's pose and motion
-   // ovrHmd_ConfigureTracking(HMD, ovrTrackingCap_Orientation, 0);
+    ovrHmd_ConfigureTracking(HMD, ovrTrackingCap_Orientation, 0);
 
     // Make the eye render buffers (caution if actual size < requested due to HW limits). 
     for (int eye=0; eye<2; eye++)
@@ -227,15 +218,16 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
        
 		//Pos.y = ovrHmd_GetFloat(HMD, OVR_KEY_EYE_HEIGHT, Pos.y);
 
-
-		// Get both eye poses simultaneously, with IPD offset already included. 
-		ovrPosef temp_EyeRenderPose[2];
-		ovrHmd_GetEyePoses(HMD, 0, useHmdToEyeViewOffset, temp_EyeRenderPose, NULL);
-
+		//set eye pose, either from tracker (here) or recorded log
 		ovrPosef hmdPose;
 		hmdPose.Orientation = Quatf(Vector3f(0,0,1),0);
 		hmdPose.Position = Pos;
 
+		//overwrite tracking data with actual value from hmd for live interaction
+		ovrTrackingState state = ovrHmd_GetTrackingState(HMD, 0);
+		hmdPose.Orientation = state.HeadPose.ThePose.Orientation;
+
+		ovrPosef temp_EyeRenderPose[2];
 		temp_EyeRenderPose[0] = Posef(hmdPose.Orientation, ((Posef)hmdPose).Apply(-((Vector3f)useHmdToEyeViewOffset[0])));
 		temp_EyeRenderPose[1] = Posef(hmdPose.Orientation, ((Posef)hmdPose).Apply(-((Vector3f)useHmdToEyeViewOffset[1])));
 

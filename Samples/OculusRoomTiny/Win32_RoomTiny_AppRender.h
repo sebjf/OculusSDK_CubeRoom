@@ -254,18 +254,14 @@ BYTE* APP_RENDER_DistortAndPresent()
         useShaderfill->VShader->SetUniform("EyeToSourceUVScale", 2, (float*)&UVScaleOffset[0]);
         useShaderfill->VShader->SetUniform("EyeToSourceUVOffset", 2, (float *)&UVScaleOffset[1]);
 
-        ovrMatrix4f    timeWarpMatrices[2];
-        Quatf extraYawSinceRender = Quatf(Vector3f(0, 1, 0), 0);
-        ovrHmd_GetEyeTimewarpMatricesDebug(HMD, (ovrEyeType)eye, *useEyePose, timeWarpMatrices, 0);
+		//dont do any time warping since most of the time this design will play back prerecorded logs
 
-        // Due to be absorbed by a future SDK update
-        UtilFoldExtraYawIntoTimewarpMatrix((Matrix4f *)&timeWarpMatrices[0], Quatf(Vector3f(0, 1, 0), 0), extraYawSinceRender);
-        UtilFoldExtraYawIntoTimewarpMatrix((Matrix4f *)&timeWarpMatrices[1], Quatf(Vector3f(0, 1, 0), 0), extraYawSinceRender);
+		ovrMatrix4f    timeWarpMatrices[2];
+		timeWarpMatrices[0] = Matrix4f::Identity();
+		timeWarpMatrices[1] = Matrix4f::Identity();
 
-        timeWarpMatrices[0] = ((Matrix4f)timeWarpMatrices[0]).Transposed();
-        timeWarpMatrices[1] = ((Matrix4f)timeWarpMatrices[1]).Transposed();
         useShaderfill->VShader->SetUniform("EyeRotationStart", 16, (float *)&timeWarpMatrices[0]);
-        useShaderfill->VShader->SetUniform("EyeRotationEnd",   16, (float *)&timeWarpMatrices[0]);
+		useShaderfill->VShader->SetUniform("EyeRotationEnd",   16, (float *)&timeWarpMatrices[0]);
 
         // Perform distortion
         DX11.Render(useShaderfill, MeshVBs[eye], MeshIBs[eye], sizeof(ovrDistortionVertex), (int)MeshVBs[eye]->Size);
