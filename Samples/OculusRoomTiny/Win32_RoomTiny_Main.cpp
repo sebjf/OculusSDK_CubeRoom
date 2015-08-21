@@ -30,6 +30,10 @@ limitations under the License.
 
 #include "Win32_DX11AppUtil.h"         // Include Non-SDK supporting utilities
 #include "OVR_CAPI.h"                  // Include the OculusVR SDK
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <Windows.h>
 
 ovrHmd           HMD;                  // The handle of the headset
 ovrEyeRenderDesc EyeRenderDesc[2];     // Description of the VR.
@@ -116,6 +120,109 @@ private:
 
 };
 
+class Logging
+{
+public:
+	Logging(ovrHmd hmd)
+	{
+		m_HMD = hmd;
+	}
+
+	void Update()
+	{
+		ovrTrackingState state = ovrHmd_GetTrackingState(m_HMD, 0);
+		
+		static double lasttime = 0;
+
+		if(state.HeadPose.TimeInSeconds == lasttime)
+		{
+			return;
+		}
+
+		lasttime = state.HeadPose.TimeInSeconds;
+
+		Record r;
+		r.timestamp = state.HeadPose.TimeInSeconds;
+		
+		log.push_back(r);
+	}
+
+	void Reset()
+	{
+		log = std::vector<Logging::Record>();
+	}
+
+	void Save()
+	{
+		std::ofstream file;
+		file.open("C:\\HeadLogs\\Log.csv",std::ios::trunc);
+
+		for(int i = 0; i < log.size(); i++)
+		{
+			Record r = log[i];
+			file << std::fixed << r.timestamp << "\n";
+		}
+
+		file.close();
+		Reset();
+	}
+
+private:
+
+	struct Record
+	{
+		double timestamp;
+	};
+
+	ovrHmd m_HMD;
+	std::vector<Logging::Record> log;
+
+};
+
+//https://msdn.microsoft.com/en-us/library/windows/desktop/ms682516(v=vs.85).aspx
+
+class LoggingThread
+{
+public:
+	LoggingThread(Logging& log)
+	{
+		//begin the thread
+		threadParams.run = true;
+		threadParams.log = &log;
+		threadHandle = CreateThread(NULL, 0, threadFunction, &threadParams, 0, &threadId);
+	}
+
+	void WaitForExit()
+	{
+		threadParams.run = false;
+		WaitForSingleObject(threadHandle, 10000);
+	}
+
+private:
+
+	struct params
+	{
+		Logging* log;
+		bool run;
+	};
+
+	params threadParams;
+
+	static DWORD WINAPI threadFunction(LPVOID lpParam)
+	{
+		params* threadParams = (params*)lpParam;
+		while(threadParams->run){
+			threadParams->log->Update();
+		}
+		return 0;
+	}
+
+
+	DWORD threadId;
+	HANDLE threadHandle;
+
+};
+
 //-------------------------------------------------------------------------------------
 int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 {
@@ -181,6 +288,11 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 
     // Create the room model
     Scene roomScene(false); // Can simplify scene further with parameter if required.
+
+
+	//begin logging in seperate thread
+	Logging log(HMD);
+	LoggingThread loggingThread(log);
 
 	OpenRenderFile();
 
@@ -285,6 +397,9 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
         APP_RENDER_DistortAndPresent();
     #endif
     }
+
+	loggingThread.WaitForExit();
+	log.Save();
 
 	CloseRenderFile();
 
