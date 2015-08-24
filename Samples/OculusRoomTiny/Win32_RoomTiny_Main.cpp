@@ -32,7 +32,9 @@ limitations under the License.
 #include "OVR_CAPI.h"                  // Include the OculusVR SDK
 #include <vector>
 #include <iostream>
+#include <istream>
 #include <fstream>
+#include <string>
 #include <Windows.h>
 
 ovrHmd           HMD;                  // The handle of the headset
@@ -123,13 +125,32 @@ private:
 class Logging
 {
 public:
+
+	struct Record
+	{
+		double timestamp;
+		float x;
+		float y;
+		float z;
+		float w;
+		float yaw;
+		float pitch;
+		float roll;
+	};
+
 	Logging(ovrHmd hmd)
 	{
 		m_HMD = hmd;
+		m_locked = false;
 	}
 
 	void Update()
 	{
+		if(m_locked)
+		{
+			return;
+		}
+
 		ovrTrackingState state = ovrHmd_GetTrackingState(m_HMD, 0);
 		
 		static double lasttime = 0;
@@ -143,41 +164,99 @@ public:
 
 		Record r;
 		r.timestamp = state.HeadPose.TimeInSeconds;
+		r.x = state.HeadPose.ThePose.Orientation.x;
+		r.y = state.HeadPose.ThePose.Orientation.y;
+		r.z = state.HeadPose.ThePose.Orientation.z;
+		r.w = state.HeadPose.ThePose.Orientation.w;
+
+		((OVR::Quatf)state.HeadPose.ThePose.Orientation).GetEulerAngles<Axis_Y, Axis_X, Axis_Z>(&(r.yaw), &(r.pitch), &(r.roll));
 		
 		log.push_back(r);
 	}
 
+	OVR::Quatf GetState(double timeInSeconds)
+	{
+		for(int i = 0; i < log.size(); i++)
+		{
+			double offset = log[i].timestamp - log.front().timestamp;
+			if(offset > timeInSeconds)
+			{
+				Record r = log[i-1];
+				return OVR::Quatf(r.x,r.y,r.z,r.w);
+			}
+		}
+
+		return OVR::Quatf(log.back().x,log.back().y,log.back().z,log.back().w);
+	}
+
+	double GetLastTime()
+	{
+		return log.back().timestamp - log.front().timestamp;
+	}
+
 	void Reset()
 	{
+		if(m_locked)
+		{
+			return;
+		}
+
 		log = std::vector<Logging::Record>();
 	}
 
 	void Save()
 	{
+		if(m_locked)
+		{
+			return;
+		}
+
 		std::ofstream file;
 		file.open("C:\\HeadLogs\\Log.csv",std::ios::trunc);
 
 		for(int i = 0; i < log.size(); i++)
 		{
 			Record r = log[i];
-			file << std::fixed << r.timestamp << "\n";
+			file << std::fixed << r.timestamp << "," << r.x << "," << r.y << "," << r.z << "," << r.w << "," << r.roll << "," << r.pitch << "," << r.yaw <<  "\n";
 		}
 
 		file.close();
 		Reset();
 	}
 
-private:
-
-	struct Record
+	void Load(std::string filename)
 	{
-		double timestamp;
-	};
+		Reset();
+		std::ifstream file(filename);
+		std::string item;
+		while(file.good())
+		{
+			Record r;
+			std::getline(file, item, ','); r.timestamp = std::stod(item);
 
-	ovrHmd m_HMD;
+			if(item.length() <= 0)
+				break;
+
+			std::getline(file, item, ','); r.x = std::stod(item);
+			std::getline(file, item, ','); r.y = std::stod(item);
+			std::getline(file, item, ','); r.z = std::stod(item);
+			std::getline(file, item, ','); r.w = std::stod(item);
+			std::getline(file, item, ','); r.yaw = std::stod(item);
+			std::getline(file, item, ','); r.pitch = std::stod(item);
+			std::getline(file, item); r.roll = std::stod(item);
+			log.push_back(r);
+		}
+		m_locked = true;
+	}
+
 	std::vector<Logging::Record> log;
+	bool m_locked;
+
+private:
+	ovrHmd m_HMD;
 
 };
+
 
 //https://msdn.microsoft.com/en-us/library/windows/desktop/ms682516(v=vs.85).aspx
 
@@ -211,9 +290,15 @@ private:
 	static DWORD WINAPI threadFunction(LPVOID lpParam)
 	{
 		params* threadParams = (params*)lpParam;
+
+		if(threadParams->log->m_locked){
+			threadParams->run = false;
+		}
+
 		while(threadParams->run){
 			threadParams->log->Update();
 		}
+
 		return 0;
 	}
 
@@ -242,7 +327,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 
 	// For this, just create a window for debugging and do not connect the display
 
-    //bool windowed = (HMD->HmdCaps & ovrHmdCap_ExtendDesktop) ? false : true;    
+   // bool windowed = (HMD->HmdCaps & ovrHmdCap_ExtendDesktop) ? false : true;    
 	bool windowed = true;
 	if (!DX11.InitWindowAndDevice(hinst, Recti(OVR::Vector2<int>(0,0), HMD->Resolution), windowed))
         return(0);
@@ -286,15 +371,23 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
     APP_RENDER_SetupGeometryAndShaders();
 #endif
 
+
+	bool EnableOfflineRender = true;
+
     // Create the room model
     Scene roomScene(false); // Can simplify scene further with parameter if required.
 
-
-	//begin logging in seperate thread
 	Logging log(HMD);
-	LoggingThread loggingThread(log);
+
+	if(EnableOfflineRender){
+		log.Load("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Rendering Experiment\\Head Tracking Logs\\HeadMotionMaster.csv");
+	}
+
+	LoggingThread loggingThread(log); 	//begin logging in seperate thread
 
 	OpenRenderFile();
+
+	double timeInSeconds = 0;
 
     // MAIN LOOP
     // =========
@@ -338,6 +431,24 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 		//overwrite tracking data with actual value from hmd for live interaction
 		ovrTrackingState state = ovrHmd_GetTrackingState(HMD, 0);
 		hmdPose.Orientation = state.HeadPose.ThePose.Orientation;
+
+		if(EnableOfflineRender)
+		{
+			hmdPose.Orientation = log.GetState(timeInSeconds); //overwrite the tracking data with that from the prerecorded logs
+		}
+
+		if(EnableOfflineRender)
+		{
+			timeInSeconds += 0.001; //in the offline render we increment the time on each iteration
+		}
+
+		if(EnableOfflineRender){
+			double logLength = log.GetLastTime();
+			if(timeInSeconds >= logLength)
+			{
+				break;
+			}
+		}
 
 		ovrPosef temp_EyeRenderPose[2];
 		temp_EyeRenderPose[0] = Posef(hmdPose.Orientation, ((Posef)hmdPose).Apply(-((Vector3f)useHmdToEyeViewOffset[0])));

@@ -18,6 +18,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 *************************************************************************************/
 
+#include <sstream>
+#include <stdio.h>
+
 // Additional structures needed for app-rendered
 Scene      * pLatencyTestScene;
 DataBuffer * MeshVBs[2] = { NULL, NULL };
@@ -145,6 +148,14 @@ void CloseRenderFile()
 	CloseHandle(hFile);
 }
 
+std::wstring GetNextFileName()
+{
+	static int frame_counter = 0;
+	std::wstringstream filename;
+	filename << L"C:\\Renders\\GroundTruth\\" << frame_counter++ << L".png";
+	return filename.str();
+}
+
 //----------------------------------------------------------------------------------
 BYTE* APP_RENDER_DistortAndPresent()
 {
@@ -270,23 +281,36 @@ BYTE* APP_RENDER_DistortAndPresent()
 
 	// Read the texture into memory
 
-	bool render = false;
+	bool render = true;
 	if(render){
 
 		DX11.Context->CopyResource(renderTargetTextureMapStaging, renderTargetTextureMap);
+
+		/* 
+		//save a single file
 
 		D3D11_MAP eMapType = D3D11_MAP_READ;
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
 
 		HRESULT mapResult = DX11.Context->Map(renderTargetTextureMapStaging, 0, eMapType, NULL, &mappedResource);
-
 		BYTE* pYourBytes = (BYTE*)mappedResource.pData;
 		unsigned int uiPitch = mappedResource.RowPitch;
-
+		
 		DWORD bytesWritten;
 		WriteFile(hFile, pYourBytes, mappedResource.DepthPitch, &bytesWritten, NULL);
 
 		DX11.Context->Unmap(renderTargetTextureMapStaging, 0);
+		*/
+
+		//figure out the next filename
+
+		HRESULT result = D3DX11SaveTextureToFile(DX11.Context,renderTargetTextureMap, D3DX11_IFF_PNG, GetNextFileName().c_str());
+
+		if(result != S_OK)
+		{
+			printf("Render Error HRESULT: %d\n",result);
+		}
+		
 	}
 
 	/* So we can see what we are capturing, copy the rendered image into the back buffer and show it on the screen */
