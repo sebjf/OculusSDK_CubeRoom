@@ -425,42 +425,42 @@ struct Scene
 		float scale = 10;
 		float scale2 = 10;
 		
-		ShaderFill* params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posx.jpg")));
+		ShaderFill* params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\sfriston\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posx.jpg")));
 		Model* m = new Model(Vector3f(1,0,0) * scale, params);
 		m->AddPlane(scale2);
 		m->Rot = Quatf(Vector3f(0,1,0),DegreeToRad(90.0f));	
 		m->AllocateBuffers();
 		Add(m);
 
-		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negx.jpg")));
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\sfriston\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negx.jpg")));
 		m = new Model(Vector3f(-1,0,0) * scale, params);
 		m->AddPlane(scale2);
 		m->Rot = Quatf(Vector3f(0,1,0),DegreeToRad(-90.0f));	
 		m->AllocateBuffers();
 		Add(m);
 
-		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posy.jpg")));
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\sfriston\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posy.jpg")));
 		m = new Model(Vector3f(0,1,0) * scale, params);
 		m->AddPlane(scale2);
 		m->Rot = Quatf(Vector3f(1,0,0),DegreeToRad(-90.0f));	
 		m->AllocateBuffers();
 		Add(m);
 
-		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negy.jpg")));
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\sfriston\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negy.jpg")));
 		m = new Model(Vector3f(0,-1,0) * scale, params);
 		m->AddPlane(scale2);
 		m->Rot = Quatf(Vector3f(1,0,0),DegreeToRad(90.0f));	
 		m->AllocateBuffers();
 		Add(m);
 
-		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posz.jpg")));
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\sfriston\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\posz.jpg")));
 		m = new Model(Vector3f(0,0,1) * scale, params);
 		m->AddPlane(scale2);
 		//m->Rot = Quatf(Vector3f(0,1,0),DegreeToRad(0.0f));	
 		m->AllocateBuffers();
 		Add(m);
 
-		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negz.jpg")));
+		params = new ShaderFill(ModelVertexDesc,3,VertexShaderSrc,PixelShaderSrc,new ImageBuffer(TEXT("C:\\Users\\sfriston\\Dropbox\\Investigations\\Environment Map Renderer\\lazarus_room\\maps\\negz.jpg")));
 		m = new Model(Vector3f(0,0,-1) * scale, params);
 		m->AddPlane(scale2);
 		m->Rot = Quatf(Vector3f(0,1,0),DegreeToRad(180.0f));	

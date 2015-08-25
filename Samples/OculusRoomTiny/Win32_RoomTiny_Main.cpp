@@ -62,8 +62,14 @@ Vector3f         Pos(0.0f,0.0f,0.0f); // Position of player
 class ArduinoLED
 {
 public:
-	ArduinoLED()
+	ArduinoLED(bool enable)
 	{
+		connected = false;
+
+		if(!enable){
+			return;
+		}
+
 		m_comPort = CreateFile(L"COM5", GENERIC_READ|GENERIC_WRITE,0, NULL, OPEN_EXISTING, 0, NULL);
 
 		DCB commState;
@@ -77,13 +83,16 @@ public:
 
 		WaitAck();
 
+		connected = true;
 		state = false;
 		enable_loopback = false;
 	}
 
 	~ArduinoLED()
 	{
-		CloseHandle(m_comPort);
+		if(connected){
+			CloseHandle(m_comPort);
+		}
 	}
 
 	void On()
@@ -111,11 +120,16 @@ private:
 	HANDLE m_comPort;
 
 	bool state;
-
+	bool connected;
 	bool enable_loopback;
 
 	void WriteByte(char byte)
 	{
+		if(!connected)
+		{
+			return;
+		}
+
 		DWORD length;
 		WriteFile(m_comPort, &byte, 1, &length, NULL);
 		FlushFileBuffers(m_comPort);
@@ -360,7 +374,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 {
 	// initialise the arduino to signal when we begin clocking out the tracker data
 
-	ArduinoLED led;
+	ArduinoLED led(false);
 
 
     // Initializes LibOVR, and the Rift
@@ -374,8 +388,8 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 
 	// For this, just create a window for debugging and do not connect the display
 
-   // bool windowed = (HMD->HmdCaps & ovrHmdCap_ExtendDesktop) ? false : true;    
-	bool windowed = true;
+    bool windowed = (HMD->HmdCaps & ovrHmdCap_ExtendDesktop) ? false : true;    
+	//bool windowed = true;
 	if (!DX11.InitWindowAndDevice(hinst, Recti(OVR::Vector2<int>(0,0), HMD->Resolution), windowed))
         return(0);
 
@@ -419,18 +433,22 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 #endif
 
 
-	bool EnableOfflineRender = true;
+	bool EnableOfflineRender = false;
 	bool EnableOnlineRender = true;
 
 	bool EnablePlayback = EnableOfflineRender | EnableOnlineRender;
+
+	bool EnableLeadIn = true;
+	int LeadInCounter = 0;
+	int LeadInMax = 150;
 
     // Create the room model
     Scene roomScene(false); // Can simplify scene further with parameter if required.
 
 	Logging log(HMD);
 
-	if(EnableOfflineRender){
-		log.Load("C:\\Users\\Sebastian\\Dropbox\\Investigations\\Rendering Experiment\\Head Tracking Logs\\HeadMotionMaster.csv");
+	if(EnablePlayback){
+		log.Load("C:\\Users\\sfriston\\Dropbox\\Investigations\\Rendering Experiment\\Head Tracking Logs\\HeadMotionMaster.csv");
 	}
 
 	LoggingThread loggingThread(log); 	//begin logging in seperate thread
@@ -489,46 +507,54 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 		ovrTrackingState state = ovrHmd_GetTrackingState(HMD, 0);
 		hmdPose.Orientation = state.HeadPose.ThePose.Orientation;
 
-		if(EnablePlayback)
+		if(LeadInCounter > LeadInMax)
 		{
-			hmdPose.Orientation = log.GetState(timeInSeconds); //overwrite the tracking data with that from the prerecorded logs
-		}
 
-		if(EnableOnlineRender)
-		{
-			static bool isFirstRun = true;
-
-			//when we signal we are about to read the first head log, that should be point at which we start syncing the leds
-			if(isFirstRun)
+			if(EnablePlayback)
 			{
-				isFirstRun = false;
-				stopwatch.Restart();
-				led.On();
+				hmdPose.Orientation = log.GetState(timeInSeconds); //overwrite the tracking data with that from the prerecorded logs
 			}
 
-			timeInSeconds = stopwatch.getTimeInSeconds();
-
-			static float lastFiveHundredMsSegment = 0;
-			float fiveHundredMsSegmentNum = std::floor(timeInSeconds / 0.5f);
-
-			if(fiveHundredMsSegmentNum != lastFiveHundredMsSegment)
+			if(EnableOnlineRender)
 			{
-				lastFiveHundredMsSegment = fiveHundredMsSegmentNum;
-				led.Invert();
-			}
-		}
+				static bool isFirstRun = true;
 
-		if(EnableOfflineRender)
+				//when we signal we are about to read the first head log, that should be point at which we start syncing the leds
+				if(isFirstRun)
+				{
+					isFirstRun = false;
+					stopwatch.Restart();
+					led.On();
+				}
+
+				timeInSeconds = stopwatch.getTimeInSeconds();
+
+				static float lastFiveHundredMsSegment = 0;
+				float fiveHundredMsSegmentNum = std::floor(timeInSeconds / 0.5f);
+
+				if(fiveHundredMsSegmentNum != lastFiveHundredMsSegment)
+				{
+					lastFiveHundredMsSegment = fiveHundredMsSegmentNum;
+					led.Invert();
+				}
+			}
+
+			if(EnableOfflineRender)
+			{
+				timeInSeconds += 0.001; //in the offline render we increment the time on each iteration
+			}
+
+			if(EnablePlayback){
+				double logLength = log.GetLastTime();
+				if(timeInSeconds >= logLength)
+				{
+					break;
+				}
+			}
+
+		}else
 		{
-			timeInSeconds += 0.001; //in the offline render we increment the time on each iteration
-		}
-
-		if(EnablePlayback){
-			double logLength = log.GetLastTime();
-			if(timeInSeconds >= logLength)
-			{
-				break;
-			}
+			LeadInCounter++;
 		}
 
 		ovrPosef temp_EyeRenderPose[2];
