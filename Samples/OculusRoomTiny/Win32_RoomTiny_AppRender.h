@@ -281,13 +281,13 @@ BYTE* APP_RENDER_DistortAndPresent()
 
 	// Read the texture into memory
 
-	bool render = true;
+	bool render = false;
 	if(render){
-
-		DX11.Context->CopyResource(renderTargetTextureMapStaging, renderTargetTextureMap);
 
 		/* 
 		//save a single file
+
+		DX11.Context->CopyResource(renderTargetTextureMapStaging, renderTargetTextureMap);
 
 		D3D11_MAP eMapType = D3D11_MAP_READ;
 		D3D11_MAPPED_SUBRESOURCE mappedResource;

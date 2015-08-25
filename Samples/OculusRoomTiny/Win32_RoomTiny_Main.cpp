@@ -308,12 +308,40 @@ private:
 
 };
 
+class Stopwatch
+{
+public:
+	Stopwatch()
+	{
+		QueryPerformanceFrequency(&frequency);
+		start_count.QuadPart = 0;
+	}
+
+	LARGE_INTEGER frequency;
+	LARGE_INTEGER start_count;
+
+	void Restart()
+	{
+		QueryPerformanceCounter(&start_count);
+	}
+	
+	double getTimeInSeconds()
+	{
+		LARGE_INTEGER current;
+		QueryPerformanceCounter(&current);
+		LONGLONG offsetL = current.QuadPart - start_count.QuadPart;
+		double offset = (double)offsetL;
+		double f = (double)frequency.QuadPart;
+		return ((double)offset / (double)(frequency.QuadPart));
+	}
+};
+
 //-------------------------------------------------------------------------------------
 int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 {
 	// initialise the arduino to signal when we begin clocking out the tracker data
 
-//	ArduinoLED led;
+	ArduinoLED led;
 
 
     // Initializes LibOVR, and the Rift
@@ -373,6 +401,9 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 
 
 	bool EnableOfflineRender = true;
+	bool EnableOnlineRender = true;
+
+	bool EnablePlayback = EnableOfflineRender | EnableOnlineRender;
 
     // Create the room model
     Scene roomScene(false); // Can simplify scene further with parameter if required.
@@ -388,6 +419,9 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 	OpenRenderFile();
 
 	double timeInSeconds = 0;
+
+	Stopwatch stopwatch;
+	stopwatch.Restart();
 
     // MAIN LOOP
     // =========
@@ -432,9 +466,14 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 		ovrTrackingState state = ovrHmd_GetTrackingState(HMD, 0);
 		hmdPose.Orientation = state.HeadPose.ThePose.Orientation;
 
-		if(EnableOfflineRender)
+		if(EnablePlayback)
 		{
 			hmdPose.Orientation = log.GetState(timeInSeconds); //overwrite the tracking data with that from the prerecorded logs
+		}
+
+		if(EnableOnlineRender)
+		{
+			timeInSeconds = stopwatch.getTimeInSeconds();
 		}
 
 		if(EnableOfflineRender)
@@ -442,7 +481,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 			timeInSeconds += 0.001; //in the offline render we increment the time on each iteration
 		}
 
-		if(EnableOfflineRender){
+		if(EnablePlayback){
 			double logLength = log.GetLastTime();
 			if(timeInSeconds >= logLength)
 			{
@@ -508,6 +547,8 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
         APP_RENDER_DistortAndPresent();
     #endif
     }
+
+	double t = stopwatch.getTimeInSeconds();
 
 	loggingThread.WaitForExit();
 	log.Save();
