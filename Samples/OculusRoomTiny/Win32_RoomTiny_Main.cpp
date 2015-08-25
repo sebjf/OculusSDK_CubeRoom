@@ -76,6 +76,9 @@ public:
 		SetCommState(m_comPort, &commState);
 
 		WaitAck();
+
+		state = false;
+		enable_loopback = false;
 	}
 
 	~ArduinoLED()
@@ -86,16 +89,30 @@ public:
 	void On()
 	{
 		WriteByte('a');
+		state = true;
 	}
 
 	void Off()
 	{
 		WriteByte('b');
+		state = false;
+	}
+
+	void Invert()
+	{
+		if(state) 
+			Off();
+		else 
+			On();
 	}
 
 
 private:
 	HANDLE m_comPort;
+
+	bool state;
+
+	bool enable_loopback;
 
 	void WriteByte(char byte)
 	{
@@ -103,9 +120,11 @@ private:
 		WriteFile(m_comPort, &byte, 1, &length, NULL);
 		FlushFileBuffers(m_comPort);
 
-		if(WaitAck() != byte)
-		{
-			printf("Error on serial");
+		if(enable_loopback){
+			if(WaitAck() != byte)
+			{
+				printf("Error on serial");
+			}
 		}
 	}
 
@@ -440,6 +459,8 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
         ovrHmd_BeginFrameTiming(HMD, 0);
     #endif
 
+		if(!EnablePlayback){
+
         // Handle key toggles for re-centering, meshes, FOV, etc.
         ExampleFeatures1(&speed, &timesToRenderScene, useHmdToEyeViewOffset);
 
@@ -454,6 +475,8 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
         if (DX11.Key['S']||DX11.Key[VK_DOWN]) Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(0,0,+speed*0.05f));
         if (DX11.Key['D'])                    Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(+speed*0.05f,0,0));
         if (DX11.Key['A'])                    Pos+=Matrix4f::RotationY(Yaw).Transform(Vector3f(-speed*0.05f,0,0));
+
+		}
        
 		//Pos.y = ovrHmd_GetFloat(HMD, OVR_KEY_EYE_HEIGHT, Pos.y);
 
@@ -473,7 +496,26 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
 
 		if(EnableOnlineRender)
 		{
+			static bool isFirstRun = true;
+
+			//when we signal we are about to read the first head log, that should be point at which we start syncing the leds
+			if(isFirstRun)
+			{
+				isFirstRun = false;
+				stopwatch.Restart();
+				led.On();
+			}
+
 			timeInSeconds = stopwatch.getTimeInSeconds();
+
+			static float lastFiveHundredMsSegment = 0;
+			float fiveHundredMsSegmentNum = std::floor(timeInSeconds / 0.5f);
+
+			if(fiveHundredMsSegmentNum != lastFiveHundredMsSegment)
+			{
+				lastFiveHundredMsSegment = fiveHundredMsSegmentNum;
+				led.Invert();
+			}
 		}
 
 		if(EnableOfflineRender)
@@ -502,8 +544,12 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE, LPSTR, int)
             bool          clearEyeImage  = true;
             bool          updateEyeImage = true;
 
+			if(!EnablePlayback){
+
             // Handle key toggles for half-frame rendering, buffer resolution, etc.
             ExampleFeatures2(eye, &useBuffer, &useEyePose, &useYaw, &clearEyeImage, &updateEyeImage);
+
+			}
 
             if (clearEyeImage)
                 DX11.ClearAndSetRenderTarget(useBuffer->TexRtv,
